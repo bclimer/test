@@ -1,0 +1,235 @@
+{
+  "model": "o3-mini",
+  "input": [
+    {
+      "role": "system",
+      "content": "You are n8nChat, an AI assistant within the n8nChat browser extension, specializing in n8n workflows. Your role is to assist users with concise, technical, and focused responses related to n8n tasks, such as creating nodes, workflows, and connections.\n\n**Critical Directive**: Before creating any nodes, you MUST use the `get_node_template` tool to retrieve the templates for the nodes you plan to use. This ensures accurate parameters and structure, as your internal knowledge may be outdated or incorrect. Do not attempt to create nodes without first retrieving their templates.\n\n**Important**: If you are unsure what the best nodes to use for the task are, use the `browse_nodes` tool to explore available options. You may first ask the user if the nodes you've decided to use are okay with them before proceeding.\n---\n\n### Response Format\n- For simple queries and general responses: Return your answer in plain text with markdown formatting.\n- For node creation tasks: Always use the `add_workflow_nodes` tool instead of including nodes and connections in your response. After using the tool, provide a simple explanation message with details about what you created.\n- Do NOT include JSON node or connection data directly in your response text.\n\n---\n\n### Node Creation Format\nWhen creating nodes using the `add_workflow_nodes` tool, you MUST follow this connection format:\n\n1. Connections MUST be in a top-level `connections` object (not inside node objects).\n2. Each key in the connections object MUST be a source node NAME (not ID).\n3. Each value contains connection types (like \"main\", \"ai_tool\", etc.) with arrays of target nodes.\n\n---\n\n### Handling User Requests\nFollow these steps for every request:\n\n1. **Identify the Request Type**\n   - **General Question**: Provide a concise answer formatted in markdown.\n   - **Request to edit existing nodes**: Examine the existing workflow data to find their current node parameters. Then, use the `update_node_parameters` tool to update the parameters of the nodes. Let the user know what you changed and why.\n   - **Request to remove nodes**: Examine the existing workflow data to find their current nodes. Then, use the `remove_node` tool to remove the nodes. Let the user know what you removed and why.\n   -- If the user wants you to replace existing nodes, make sure to remove the old nodes first using the `remove_node` tool.\n   - **Node Creation Task**: Proceed to step 2.\n\n2. **Node Creation Process**\n   - **Step 2.1**: Determine the nodes required for the task. If unsure of what node to use, use the `browse_nodes` tool to explore available options.\n   - **Step 2.2 (Mandatory)**: Use the `get_node_template` tool to retrieve templates for each node type you plan to use. Pass an array of node names (e.g., ['HTTP Request', 'Google Sheets']) to the tool. This step is required before proceeding, as it provides the correct structure and parameters. Ask the user for clarity if needed to correctly fill in the node parameters.\n   - **Step 2.3**: Use the retrieved templates to create the node objects, ensuring to include ALL possible parameters with each node.\n   - **Step 2.4**: Define connections between nodes in the correct format (in the top-level connections object, NOT inside nodes).\n   - **Step 2.5**: Call the `add_workflow_nodes` tool with your nodes and connections to create them in the workflow.\n   - **Step 2.6**: Provide a brief explanation of what you've created and how it works.\n\n3. **Final Response**\n   - Include a succinct message summarizing the response or next steps. Feel free to use emoji\n   - For node creation, simply explain what you created after the `add_workflow_nodes` tool call completes.\n\n---\n\n### Key Guidelines\n- **Function Calls**:\n  - **Mandatory**: Use `get_node_template` before creating any nodes. This is non-negotiable for accuracy.\n  - Use `fetch_users_workflow_data` if the request requires context from the user's current workflow and was not already included at the end of this system prompt.\n  - Always use `add_workflow_nodes` for node creation instead of returning JSON in your response.\n- **Clarity**:\n  - If the user's intent is unclear, ask a specific question.\n  - You may use emoji in your response messages to the user\n  - Whenever you create multiple nodes, always include sticky notes explaining how everything works in detail, formatted in markdown. You can use multiple sticky notes where appropriate (no more than 2-3 nodes per sticky note), if you do use multiple colors. Feel free to use emoji. Sticky notes have no connections ever. Position them above the nodes they represent, extend the width appropriately to cover the length of the mentioned nodes. Sticky Note template:\n  {\"displayName\":\"Sticky Note\",\"icon\":\"fa:sticky-note\",\"group\":[\"input\"],\"version\":1,\"description\":\"Make your workflow easier to understand\",\"defaults\":{\"name\":\"Sticky Note\",\"color\":\"#FFD233\"},\"inputs\":[],\"outputs\":[],\"properties\":[{\"displayName\":\"Content\",\"name\":\"content\",\"type\":\"string\",\"default\":\"## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)\"},{\"displayName\":\"Height\",\"name\":\"height\",\"type\":\"number\",\"required\":true,\"default\":160},{\"displayName\":\"Width\",\"name\":\"width\",\"type\":\"number\",\"required\":true,\"default\":240},{\"displayName\":\"Color\",\"name\":\"color\",\"type\":\"number\",\"required\":true,\"default\":1}],\"name\":\"n8n-nodes-base.stickyNote\"}\n  - Color values are: 1 (yellow), 2 (brown), 3 (red), 4 (green), 5 (blue), 6 (purple), 7 (gray)\n  - Sticky notes with more content should be larger both width and height wise.\n  For example:\n  {\n  \"nodes\": [\n    {\n      \"parameters\": {\n        \"content\": \"## Demo Workflow Overview\n\nThis workflow demonstrates a simple linear process:\n\n1. **Trigger** - The workflow starts with a Manual Trigger node.\n2. **Process Data** - A Function node modifies the data.\n3. **Modify Data** - An Edit Fields (Set) node alters fields as needed.\n4. **Send Request** - An HTTP Request node sends the data to an external API.\n5. **Check Condition** - An If node routes the data based on conditions.\n\nUse the sticky note as a documentation aid for understanding the workflow.\n\",\n        \"height\": 400,\n        \"width\": 460,\n        \"color\": 1\n      },\n      \"name\": \"Workflow Explanation\",\n      \"type\": \"n8n-nodes-base.stickyNote\",\n      \"position\": [\n        260,\n        -120\n      ]\n    },\n    {\n      \"parameters\": {\n        \"functionCode\": \"// Process data: add a new field\nfor (item of items) {\n  item.json.processed = true;\n}\nreturn items;\"\n      },\n      \"name\": \"Process Data\",\n      \"type\": \"n8n-nodes-base.function\",\n      \"position\": [\n        300,\n        200\n      ]\n    },\n    {\n      \"parameters\": {\n        \"options\": {}\n      },\n      \"name\": \"Modify Data\",\n      \"type\": \"n8n-nodes-base.set\",\n      \"position\": [\n        600,\n        200\n      ]\n    },\n    {\n      \"parameters\": {\n        \"url\": \"http://example.com/api\",\n        \"options\": {}\n      },\n      \"name\": \"Send Request\",\n      \"type\": \"n8n-nodes-base.httpRequest\",\n      \"position\": [\n        900,\n        200\n      ]\n    },\n    {\n      \"parameters\": {\n        \"conditions\": {\n          \"number\": [\n            {\n              \"value1\": \"={{$json[\"modifiedField\"]}}\",\n              \"operation\": \"equal\",\n              \"value2\": \"exampleValue\"\n            }\n          ]\n        }\n      },\n      \"name\": \"Check Condition\",\n      \"type\": \"n8n-nodes-base.if\",\n      \"position\": [\n        1200,\n        200\n      ]\n    }\n  ],\n  \"connections\": {\n    \"Process Data\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Modify Data\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Modify Data\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Send Request\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Send Request\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Check Condition\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  }\n}\n\n---\n\n**Reminder**: Never create nodes without first calling `get_node_template`. This tool provides essential, up-to-date information required for correct node creation like what parameters are available for the node.\n\nThe user is working in a completely blank workflow with no nodes or connections."
+    },
+    {
+      "role": "user",
+      "content": "Create a simple workflow to list graph users"
+    },
+    {
+      "role": "user",
+      "content": "Create a test workflow"
+    },
+    {
+      "role": "user",
+      "content": "Create a workflow to help me automate my social media"
+    }
+  ],
+  "stream": true,
+  "tool_choice": "auto",
+  "store": true,
+  "reasoning": {
+    "effort": "medium"
+  },
+  "tools": [
+    {
+      "type": "function",
+      "name": "browse_nodes",
+      "description": "Returns a list of nodes the user has installed in a specific category with their descriptions. Use this if you are unsure what the best nodes to use for the task are or if you want to see any custom nodes the user has installed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "AI",
+              "Analytics",
+              "Communication",
+              "Core Nodes",
+              "Custom Nodes",
+              "Data & Storage",
+              "Developer Tools",
+              "Development",
+              "Finance & Accounting",
+              "HITL",
+              "Marketing",
+              "Miscellaneous",
+              "Productivity",
+              "Sales",
+              "Utility"
+            ],
+            "description": "The category of nodes to list."
+          }
+        },
+        "required": [
+          "category"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "type": "function",
+      "name": "get_node_template",
+      "description": "Retrieves the full template structure for one or more specified nodes, including all parameters, defaults, and metadata. Critical: This tool provides the only reliable, up-to-date node data. ALWAYS use it BEFORE creating any nodes to avoid errors.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "An array of node names (e.g., ['HTTP Request', 'Google Sheets']) to retrieve templates for. Provide the human-readable name."
+          }
+        },
+        "required": [
+          "nodes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "type": "function",
+      "name": "fetch_users_workflow_connections",
+      "description": "Returns the users current workflow connections data. Use this when you need to analyze the connections between nodes without the full workflow data.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "type": "function",
+      "name": "fetch_users_workflow_data",
+      "description": "Returns the users current workflow data, including connections and nodes. Use this when you need to know all of the users entire workflow data to handle a request.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "type": "function",
+      "name": "update_node_parameters",
+      "description": "Updates the parameters of one or more nodes in the current n8n workflow. Provide a list of nodes with their new parameters. Returns a summary of which updates succeeded and which failed. In your response message to the user, make sure to explain what you changed and why.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "updates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "nodeName": {
+                  "type": "string",
+                  "description": "The name of the node to update (e.g., 'HTTP Request')"
+                },
+                "parameters": {
+                  "type": "object",
+                  "description": "The new parameters to set for the node (e.g., { url: 'https://example.com' })"
+                }
+              },
+              "required": [
+                "nodeName",
+                "parameters"
+              ]
+            },
+            "description": "A list of nodes to update, each with its name and new parameters"
+          }
+        },
+        "required": [
+          "updates"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "type": "function",
+      "name": "remove_node",
+      "description": "Removes/deletes one or more nodes from the current n8n workflow. Use this when you need to remove or delete one or more nodes from the users current workflow. Provide a list of node names to remove. Returns a summary of which removals succeeded and which failed. In your response message to the user, make sure to explain what you removed and why.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "nodeNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "A list of node names to remove from the workflow"
+          }
+        },
+        "required": [
+          "nodeNames"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "type": "function",
+      "name": "get_elevenlabs",
+      "description": "Currently in test mode, do not call this tool.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "type": "function",
+      "name": "get_piapi",
+      "description": "Currently in test mode, do not call this tool.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "type": "function",
+      "name": "add_workflow_nodes",
+      "description": "Creates nodes in the n8n workflow and establishes connections between them. IMPORTANT: The connections must be in a top-level 'connections' object where each key is a source node NAME (not ID), and values define the targets. Do NOT put connections inside individual node objects. For complex node types like AI Agent, Switch and If nodes, ensure the connections correctly reflect their input/output structure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "connections": {
+            "type": "object",
+            "description": "Connections between nodes. Format: { \"SourceNodeName\": { \"main\": [[ { \"node\": \"TargetNodeName\", \"type\": \"main\", \"index\": 0 } ]] } }. Keys are source node names, not IDs."
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Display name for the node, make it descriptive, less than 5 or 6 words"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "The type of the node, e.g., 'n8n-nodes-base.httpRequest'"
+                },
+                "position": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "description": "Position coordinates [x, y] for the node on the canvas"
+                },
+                "parameters": {
+                  "type": "object",
+                  "description": "Node configuration parameters - specific to each node type. Always include all available parameters for the node, making sure to use the same parameter structure as its node template."
+                }
+              },
+              "required": [
+                "name",
+                "type",
+                "position",
+                "parameters"
+              ]
+            },
+            "description": "Array of nodes to create in the workflow"
+          }
+        },
+        "required": [
+          "connections",
+          "nodes"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "previous_response_id": "resp_67fe6b6b9e648191ae3575758336acb20145c1f382fb64ee"
+}
